@@ -321,8 +321,8 @@ export async function syncVaultStats(
   horizonUrl: string = process.env.HORIZON_URL ?? "https://horizon-testnet.stellar.org"
 ): Promise<void> {
   try {
-    const { SorobanRpc, Contract } = await import("@stellar/stellar-sdk");
-    const server = new SorobanRpc.Server(horizonUrl, {
+    const { rpc, Contract } = await import("@stellar/stellar-sdk");
+    const server = new rpc.Server(horizonUrl, {
       allowHttp: horizonUrl.startsWith("http://"),
     });
 
@@ -353,15 +353,18 @@ export async function syncVaultStats(
           .build();
 
         const simResult = await server.simulateTransaction(txForSim);
-        if (SorobanRpc.Api.isSimulationSuccess(simResult) && simResult.result) {
+        if (rpc.Api.isSimulationSuccess(simResult) && simResult.result) {
           // result.retval is an xdr.ScVal — extract the i128/u64 value
           const xdrVal = simResult.result.retval;
           const { xdr } = await import("@stellar/stellar-sdk");
           const scVal = xdr.ScVal.fromXDR(
             Buffer.from(xdrVal.toXDR("base64"), "base64")
           );
-          if (scVal.switch().name === "scvI128" || scVal.switch().name === "scvU64") {
-            tvl = scVal.i128?.lo()?.toString() ?? scVal.u64()?.toString() ?? "0";
+          if (scVal.switch().name === "scvI128") {
+            const parts = scVal.i128();
+            tvl = ((BigInt(parts.hi().toString()) << 64n) | BigInt(parts.lo().toString())).toString();
+          } else if (scVal.switch().name === "scvU64") {
+            tvl = scVal.u64().toString();
           }
         }
       }

@@ -15,7 +15,7 @@
 import { Queue, Worker, type Job } from 'bullmq';
 import { getVaultStats } from './vaultStatsService.js';
 import { evaluateSubscriptions, type VaultSnapshot } from './alertSubscriptionServiceV2.js';
-import { getRedisConnection } from '../redis.js';
+import { getRedis } from '../redis.js';
 import { logger } from '../logger.js';
 
 const QUEUE_NAME = 'alert-evaluation';
@@ -43,7 +43,7 @@ let alertQueue: Queue | null = null;
 let alertWorker: Worker | null = null;
 
 export async function startAlertEvaluationJob(): Promise<void> {
-  const connection = getRedisConnection();
+  const connection = getRedis();
 
   alertQueue = new Queue(QUEUE_NAME, { connection });
 

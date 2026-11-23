@@ -14,14 +14,14 @@
 
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import express from "express";
-import path from "path";
+import { fileURLToPath } from "node:url";
 import * as OpenApiValidator from "express-openapi-validator";
 
 /** 64 KB in bytes */
 export const MAX_BODY_BYTES = 64 * 1024;
 
 /** Absolute path to the OpenAPI specification. */
-export const OPENAPI_SPEC_PATH = path.resolve(__dirname, "../../../docs/openapi.yaml");
+export const OPENAPI_SPEC_PATH = fileURLToPath(new URL("../../../docs/openapi.yaml", import.meta.url));
 
 /**
  * Returns the raw Content-Length from the request headers as a number,
@@ -177,24 +177,20 @@ export function openApiValidation(): RequestHandler {
     validateSecurity: false,
   });
 
-  return (req: Request, res: Response, next: NextFunction): void => {
-    validator(req, res, (err?: unknown) => {
-      if (!err) {
-        next();
-        return;
-      }
+  const router = express.Router();
+  router.use(...validator);
+  router.use((err: unknown, _req: Request, res: Response, _next: NextFunction): void => {
+    const details = toValidationDetails(err);
+    const status =
+      typeof (err as { status?: number }).status === "number"
+        ? (err as { status: number }).status
+        : 400;
 
-      const details = toValidationDetails(err);
-      const status =
-        typeof (err as { status?: number }).status === "number"
-          ? (err as { status: number }).status
-          : 400;
-
-      res.status(status).json({
-        error: status === 400 ? "Bad Request" : "Validation Error",
-        message: (err as { message?: string }).message ?? "Request validation failed",
-        details,
-      });
+    res.status(status).json({
+      error: status === 400 ? "Bad Request" : "Validation Error",
+      message: (err as { message?: string }).message ?? "Request validation failed",
+      details,
     });
-  };
+  });
+  return router;
 }

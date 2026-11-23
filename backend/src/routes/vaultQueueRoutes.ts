@@ -39,7 +39,7 @@ const txSchema = z.object({
   signedXdr: z.string().optional(),
   /** Webhook URL to notify on completion / failure */
   webhookUrl: z.string().url().optional(),
-  meta: z.record(z.unknown()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
